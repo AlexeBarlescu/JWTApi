@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Okta.AspNetCore;
+using Newtonsoft.Json.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,17 @@ builder.Services
             ValidAudience = builder.Configuration["JWT:ValidAudience"],
             ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+        };
+
+        options.Events = new JwtBearerEvents()
+        {
+
+            OnMessageReceived = async context =>
+            {              
+                //okta idtoken
+                var idToken = context.Request.Headers["X-okta-token"].FirstOrDefault();
+            
+            }
         };
     });
 

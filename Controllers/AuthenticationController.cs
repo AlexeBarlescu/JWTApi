@@ -26,6 +26,33 @@ namespace JWTApi.Controllers
         }
 
         [HttpPost]
+        [Route("login-okta")]
+        public IActionResult LoginWithOkta()
+        {
+
+            if (HttpContext.Request.Headers.TryGetValue("Authorization", out var authHeaderValues))
+            {
+                // Check if the header contains the Bearer scheme
+                var bearerToken = authHeaderValues.FirstOrDefault(h => h.StartsWith("Bearer "));
+                if (!string.IsNullOrEmpty(bearerToken))
+                {
+                    // Extract the token value
+                    //var token = bearerToken.Substring("Bearer ".Length);
+
+                    // Use the token as needed
+                    // ...
+
+                    return Ok(new
+                    {
+                        token = bearerToken
+                    });
+                }
+            }
+
+            return Ok(new Response { Status = "Error", Message = "User is not okta authenticated" });
+        }
+
+        [HttpPost]
         [Route("login")]
         public async Task<IActionResult> Login([FromBody] LoginVM model)
         {

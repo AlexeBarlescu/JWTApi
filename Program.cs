@@ -8,8 +8,16 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Okta.AspNetCore;
 using Newtonsoft.Json.Linq;
+using JWTApi;
+using JWTApi.Services;
+using Microsoft.VisualBasic;
+using System.Runtime.CompilerServices;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
+WebApplication app = null;
+
+builder.Services.AddScoped<Auth>();
 
 // Configure your DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -42,12 +50,37 @@ builder.Services
 
         options.Events = new JwtBearerEvents()
         {
-
-            OnMessageReceived = async context =>
-            {              
-                //okta idtoken
-                var idToken = context.Request.Headers["X-okta-token"].FirstOrDefault();
             
+            OnMessageReceived = async context =>
+            {
+
+                // Authorization header exists user continue, allow this middlware to autheticate the token
+                // Else check for okta token
+                var authHeader = context.Request.Headers["Authorization"].ToString();
+
+                if (!string.IsNullOrEmpty(authHeader))
+                {
+                    return;
+                }
+
+                using var scope = app.Services.CreateScope();
+                var provider = scope.ServiceProvider;
+
+                var auth = provider.GetRequiredService<Auth>();
+
+
+                //create okta authenticator
+                var oktaAuthenticator = new OktaTokenAuthenticator(auth);
+
+                //my custom token
+                var token = await oktaAuthenticator.AuthenticateIdToken(context.HttpContext);
+
+                //If there was a okta idToken in the request own custom token was created.
+                if (token != null)
+                {
+                    context.Request.Headers.Add("Authorization", "Bearer " + new JwtSecurityTokenHandler().WriteToken(token));
+                }
+
             }
         };
     });
@@ -81,7 +114,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var app = builder.Build();
+app = builder.Build();
 
 // Configure the HTTP request pipeline.
 

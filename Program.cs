@@ -19,7 +19,7 @@ WebApplication app = null;
 
 builder.Services.AddScoped<Auth>();
 
-// Configure your DbContext
+// Configure DbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -47,44 +47,7 @@ builder.Services
             ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
         };
-
-        options.Events = new JwtBearerEvents()
-        {
-            
-            OnMessageReceived = async context =>
-            {
-
-                // Authorization header exists user continue, allow this middlware to autheticate the token
-                // Else check for okta token
-                var authHeader = context.Request.Headers["Authorization"].ToString();
-
-                if (!string.IsNullOrEmpty(authHeader))
-                {
-                    return;
-                }
-
-                using var scope = app.Services.CreateScope();
-                var provider = scope.ServiceProvider;
-
-                var auth = provider.GetRequiredService<Auth>();
-
-
-                //create okta authenticator
-                var oktaAuthenticator = new OktaTokenAuthenticator(auth);
-
-                //my custom token
-                var token = await oktaAuthenticator.AuthenticateIdToken(context.HttpContext);
-
-                //If there was a okta idToken in the request own custom token was created.
-                if (token != null)
-                {
-                    context.Request.Headers.Add("Authorization", "Bearer " + new JwtSecurityTokenHandler().WriteToken(token));
-                }
-
-            }
-        };
     });
-
 
 // Additional Identity configurations
 builder.Services.Configure<IdentityOptions>(options =>

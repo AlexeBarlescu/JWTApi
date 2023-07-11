@@ -19,10 +19,8 @@ namespace JWTApi
             _auth = auth;
         }
 
-        public async Task<JwtSecurityToken?> AuthenticateIdToken(HttpContext context)
+        public async Task<JwtSecurityToken?> AuthenticateIdToken(string token)
         {
-            //okta idtoken
-            var token = context.Request.Headers["X-okta-token"].FirstOrDefault();
             if (token == null)
             {
                 return null;
@@ -57,6 +55,7 @@ namespace JWTApi
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
+
             try
             {
                 var claimsPrincipal = tokenHandler.ValidateToken(token, validationParameters, out _);
@@ -67,13 +66,13 @@ namespace JWTApi
                 //Sing the user in with identity
                 if (!string.IsNullOrEmpty(email))
                 {
-                    return await _auth.SignInWithEmail(email); //my custom token
+                    return await _auth.SignInWithEmail(email); //return my own jwt token
                 }
             }
             catch (SecurityTokenValidationException)
             {
                 // The token is invalid
-                // Handle the invalid token scenario
+                //TODO: Handle the invalid token scenario
             }
             return null;
         }

@@ -5,21 +5,25 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Identity;
 using JWTApi.ViewModels;
+using JWTApi.Services;
 
 namespace JWTApi.Controllers
 {
     [ApiController]
     public class AuthenticateController : ControllerBase
     {
+        private readonly Auth _auth;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IConfiguration _configuration;
 
         public AuthenticateController(
+            Auth auth,
             UserManager<IdentityUser> userManager,
             RoleManager<IdentityRole> roleManager,
             IConfiguration configuration)
         {
+            _auth = auth;
             _userManager = userManager;
             _roleManager = roleManager;
             _configuration = configuration;
@@ -27,26 +31,16 @@ namespace JWTApi.Controllers
 
         [HttpPost]
         [Route("login-okta")]
-        public IActionResult LoginWithOkta()
+        public async Task<IActionResult> LoginWithOkta([FromBody] LoginOktaVM model)
         {
+            var token = model.Token;
+            var oktaAuthenticator = new OktaTokenAuthenticator(_auth);
 
-            if (HttpContext.Request.Headers.TryGetValue("Authorization", out var authHeaderValues))
+            var myToken = await oktaAuthenticator.AuthenticateIdToken(token);
+
+            if (myToken != null)
             {
-                // Check if the header contains the Bearer scheme
-                var bearerToken = authHeaderValues.FirstOrDefault(h => h.StartsWith("Bearer "));
-                if (!string.IsNullOrEmpty(bearerToken))
-                {
-                    // Extract the token value
-                    //var token = bearerToken.Substring("Bearer ".Length);
-
-                    // Use the token as needed
-                    // ...
-
-                    return Ok(new
-                    {
-                        token = bearerToken
-                    });
-                }
+                return Ok(new { token = "Bearer " + new JwtSecurityTokenHandler().WriteToken(myToken) });
             }
 
             return Ok(new Response { Status = "Error", Message = "User is not okta authenticated" });
@@ -64,7 +58,6 @@ namespace JWTApi.Controllers
                 var authClaims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, user.UserName)
-                    //new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 };
 
                 foreach (var userRole in userRoles)
@@ -76,7 +69,7 @@ namespace JWTApi.Controllers
 
                 return Ok(new
                 {
-                    token = new JwtSecurityTokenHandler().WriteToken(token),
+                    token = "Bearer " + new JwtSecurityTokenHandler().WriteToken(token),
                     expiration = token.ValidTo
                 });
             }
@@ -168,7 +161,7 @@ namespace JWTApi.Controllers
 
             //Add user to Roles
             await _userManager.AddToRoleAsync(user, UserRoles.Admin);
-            await _userManager.AddToRoleAsync(user, UserRoles.User);
+            //await _userManager.AddToRoleAsync(user, UserRoles.User);
 
             return Ok(new Response { Status = "Success", Message = "Admin user created successfully!" });
         }

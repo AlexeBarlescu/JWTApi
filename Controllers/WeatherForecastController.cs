@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace JWTApi.Controllers
 {
-    [Authorize(Roles = "Admin, User")]
+    [Authorize(Roles = "Admin")]
     [ApiController]
     [Route("[controller]")]
     public class WeatherForecastController : ControllerBase
